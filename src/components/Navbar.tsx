@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Logo } from './logo.tsx';
 import { Language, ServiceDivisionId } from '../types/index.ts';
 import { SERVICE_DIVISIONS, COMPANY_INFO } from '../data/servicesData.ts';
 import { 
@@ -104,9 +103,19 @@ export const Navbar: React.FC<NavbarProps> = ({
               if (onNavigatePortal) onNavigatePortal();
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
-            className="cursor-pointer transition-transform hover:scale-[1.01]"
+            className="cursor-pointer transition-transform hover:scale-[1.01] flex items-center"
           >
-            <Logo variant="dark" />
+            <img 
+              src="/logo/logo.png" 
+              alt="Multiservicios Lumiel" 
+              className="h-10 sm:h-12 w-auto max-h-12 object-contain"
+              onError={(e) => {
+                const target = e.currentTarget as HTMLImageElement;
+                if (!target.src.endsWith('/logo/icon.png')) {
+                  target.src = '/logo/icon.png';
+                }
+              }}
+            />
           </div>
 
           {/* Desktop Nav Links */}

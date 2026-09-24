@@ -1,5 +1,4 @@
 import React from 'react';
-import { Logo } from './Logo.tsx';
 import { Language, ServiceDivisionId } from '../types/index.ts';
 import { COMPANY_INFO, SERVICE_DIVISIONS } from '../data/servicesData.ts';
 import { MapPin, Phone, Mail, Lock } from 'lucide-react';
@@ -30,7 +29,19 @@ export const Footer: React.FC<FooterProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8">
           {/* Brand Identity & Summary (Blueprint Section 51) */}
           <div className="lg:col-span-4 space-y-4">
-            <Logo variant="light" />
+            <div className="flex items-center gap-3">
+              <img 
+                src="/logo/logo.png" 
+                alt="Multiservicios Lumiel" 
+                className="h-11 sm:h-12 w-auto max-h-12 object-contain"
+                onError={(e) => {
+                  const target = e.currentTarget as HTMLImageElement;
+                  if (!target.src.endsWith('/logo/icon.png')) {
+                    target.src = '/logo/icon.png';
+                  }
+                }}
+              />
+            </div>
 
             <p className="text-xs text-[#EAE3D8] leading-relaxed max-w-sm mt-3">
               {isEs
@@ -152,7 +163,7 @@ export const Footer: React.FC<FooterProps> = ({
                   title={isEs ? 'Acceso administrativo seguro al CRM' : 'Secure staff access to CRM'}
                 >
                   <Lock className="w-3.5 h-3.5 text-[#C9A96B]" />
-                  <span>{isEs ? 'Admin' : 'Access'}</span>
+                  <span>{isEs ? 'Acceso CRM Staff' : 'Staff CRM Access'}</span>
                 </button>
               </div>
             </div>
