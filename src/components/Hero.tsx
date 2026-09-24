@@ -27,11 +27,18 @@ export const Hero: React.FC<HeroProps> = ({
 
   return (
     <section className="relative min-h-[85vh] sm:min-h-[90vh] w-full flex items-center overflow-hidden bg-[#0F2747] text-white">
-      {/* FULL SCREEN BACKGROUND IMAGE (Lighter, crisp, highly visible) */}
-      <div
-        className="absolute inset-0 w-full h-full bg-cover bg-center sm:bg-[center_35%] z-0 scale-100 transition-all duration-700"
-        style={{ backgroundImage: `url(${heroBgImage})` }}
-      />
+      {/* FULL SCREEN BACKGROUND VIDEO WITH IMAGE POSTER FALLBACK */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        poster={heroBgImage}
+        className="absolute inset-0 w-full h-full object-cover z-0"
+      >
+        <source src="/video/hero-video.mp4" type="video/mp4" />
+        <source src="/videos/hero-video.mp4" type="video/mp4" />
+      </video>
 
       {/* Lighter, softer overlay scrim allowing the office image to be luminous and clearly seen */}
       <div className="absolute inset-0 bg-gradient-to-r from-[#0F2747]/80 via-[#0F2747]/50 to-[#0F2747]/20 z-10" />
