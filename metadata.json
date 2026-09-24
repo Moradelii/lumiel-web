@@ -1,0 +1,6 @@
+{
+  "name": "Multiservicios Lumiel - Gestión de Clientes y Centro Notarial",
+  "description": "Centro profesional de servicios de documentos, apostillas, notarizaciones, traducciones y gestión de clientes bilingüe en Houston, Texas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

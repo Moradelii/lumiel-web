@@ -1,0 +1,48 @@
+import { CrmUser } from '../types/index.ts';
+
+export const INITIAL_CRM_USERS: CrmUser[] = [
+  {
+    id: 'user-001',
+    username: 'admin',
+    password: 'Antunez0105',
+    fullName: 'Alaniss Antúnez',
+    email: 'multiservicioslumielayi@gmail.com',
+    role: 'super_admin',
+    status: 'active',
+    createdAt: '2026-01-15T09:00:00Z',
+    lastLogin: '2026-09-23T19:40:00Z',
+  },
+  {
+    id: 'user-002',
+    username: 'laura.notaria',
+    password: 'Antunez0105',
+    fullName: 'Laura Méndez',
+    email: 'laura.mendez@multiservicioslumiel.com',
+    role: 'notary',
+    status: 'active',
+    createdAt: '2026-02-01T10:30:00Z',
+    lastLogin: '2026-09-23T18:15:00Z',
+  },
+  {
+    id: 'user-003',
+    username: 'carlos.rivas',
+    password: 'Antunez0105',
+    fullName: 'Carlos Rivas',
+    email: 'carlos.rivas@multiservicioslumiel.com',
+    role: 'agent',
+    status: 'active',
+    createdAt: '2026-03-10T14:00:00Z',
+    lastLogin: '2026-09-22T16:50:00Z',
+  },
+  {
+    id: 'user-004',
+    username: 'javier.dominguez',
+    password: 'Antunez0105',
+    fullName: 'Javier Domínguez',
+    email: 'jdominguez@multiservicioslumiel.com',
+    role: 'agent',
+    status: 'active',
+    createdAt: '2026-04-05T11:20:00Z',
+    lastLogin: '2026-09-21T12:00:00Z',
+  },
+];

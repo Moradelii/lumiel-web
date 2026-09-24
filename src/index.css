@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Playfair Display", Georgia, serif;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+
+  --color-brand-navy: #0F2747;
+  --color-brand-sand: #DCC9A7;
+  --color-brand-cream: #F8F6F1;
+  --color-brand-taupe: #887D6B;
+  --color-brand-dark: #2E2E2E;
+  --color-brand-gold: #C9A96B;
+  
+  --color-brand-salvia: #8A9A7B;
+  --color-brand-slate-blue: #8EA2B6;
+  --color-brand-sand-light: #EAE3D8;
+  --color-brand-warm-brown: #A88F7A;
+}
+
+/* Custom Liquid Glass utilities from Blueprint Section 34 & Palette */
+.liquid-glass {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(220, 201, 167, 0.45);
+  box-shadow: 0 10px 30px -10px rgba(15, 39, 71, 0.08);
+}
+
+.liquid-glass-dark {
+  background: rgba(15, 39, 71, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(201, 169, 107, 0.28);
+  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.35);
+}
+
+.liquid-glass-gold {
+  background: rgba(248, 246, 241, 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(201, 169, 107, 0.5);
+  box-shadow: 0 8px 24px -6px rgba(201, 169, 107, 0.2);
+}
+
+/* Smooth custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F8F6F1;
+}
+::-webkit-scrollbar-thumb {
+  background: #DCC9A7;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #887D6B;
+}
+
+/* Print optimizations for CRM table reports */
+@media print {
+  @page {
+    size: landscape;
+    margin: 10mm;
+  }
+
+  body {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    font-size: 11px !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Automatically suppress non-printable elements */
+  nav,
+  footer,
+  aside,
+  button,
+  input,
+  select,
+  textarea,
+  [role="dialog"],
+  .no-print,
+  .print-hidden {
+    display: none !important;
+  }
+
+  /* Optimize table layout for print */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  th, td {
+    padding: 6px 8px !important;
+  }
+}
+
