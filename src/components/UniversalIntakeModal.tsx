@@ -14,6 +14,59 @@ import {
   AlertCircle 
 } from 'lucide-react';
 
+export type ApostilleUrgency = 'regular' | 'fast' | 'express';
+
+export interface ApostilleOptionDetails {
+  id: ApostilleUrgency;
+  title: { es: string; en: string };
+  timeDesc: { es: string; en: string };
+  price: number;
+  popular?: boolean;
+}
+
+export const APOSTILLE_OPTIONS: Record<ApostilleUrgency, ApostilleOptionDetails> = {
+  regular: {
+    id: 'regular',
+    title: {
+      es: 'Apostillado trámite regular 2 a 3 semanas',
+      en: 'Standard Apostille 2 to 3 weeks',
+    },
+    timeDesc: {
+      es: '2 a 3 semanas',
+      en: '2 to 3 weeks',
+    },
+    price: 150,
+  },
+  fast: {
+    id: 'fast',
+    title: {
+      es: 'Apostillado trámite rápido en 1 semana',
+      en: 'Fast Apostille in 1 week',
+    },
+    timeDesc: {
+      es: '1 semana',
+      en: '1 week',
+    },
+    price: 550,
+    popular: true,
+  },
+  express: {
+    id: 'express',
+    title: {
+      es: 'Apostillado trámite express en 24 horas',
+      en: 'Express Apostille in 24 hours',
+    },
+    timeDesc: {
+      es: '24 horas',
+      en: '24 hours',
+    },
+    price: 700,
+  },
+};
+
+export const TRANSLATION_SURCHARGE = 120;
+export const OPERATIONS_EMAIL = 'multiservicioslumielayi@gmail.com';
+
 interface UniversalIntakeModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -41,8 +94,10 @@ export const UniversalIntakeModal: React.FC<UniversalIntakeModalProps> = ({
     // Apostille
     countryOfUse: 'México',
     issuingState: 'Texas',
-    needsTranslation: true,
+    apostilleUrgency: 'regular' as ApostilleUrgency,
+    needsTranslation: false,
     deliveryMethod: 'pickup',
+    acknowledgedOriginalRequired: false,
     // Notary
     numSigners: '1',
     witnessRequired: 'no',
@@ -88,19 +143,90 @@ export const UniversalIntakeModal: React.FC<UniversalIntakeModalProps> = ({
   const [generatedCaseNumber, setGeneratedCaseNumber] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState('');
 
-  useEffect(() => {
-    if (initialDivisionId) {
-      setDivision(initialDivisionId);
-      const divObj = SERVICE_DIVISIONS.find((d) => d.id === initialDivisionId);
-      if (divObj && divObj.services.length > 0) {
-        setServiceId(divObj.services[0].id);
-      }
-    } else {
-      const defaultDiv = SERVICE_DIVISIONS[0];
-      setDivision(defaultDiv.id);
-      setServiceId(defaultDiv.services[0].id);
+  const modalBodyRef = React.useRef<HTMLDivElement>(null);
+
+  // Reset entire form back to step 1 and initial clean values
+  const resetForm = (targetDivisionId?: ServiceDivisionId) => {
+    const activeDiv = targetDivisionId || initialDivisionId || 'apostille';
+    setStep(1);
+    setDivision(activeDiv);
+    const divObj = SERVICE_DIVISIONS.find((d) => d.id === activeDiv) || SERVICE_DIVISIONS[0];
+    setServiceId(divObj.services[0]?.id || '');
+    setFlowData({
+      countryOfUse: 'México',
+      issuingState: 'Texas',
+      apostilleUrgency: 'regular',
+      needsTranslation: false,
+      deliveryMethod: 'pickup',
+      acknowledgedOriginalRequired: false,
+      numSigners: '1',
+      witnessRequired: 'no',
+      hasNotaryDraft: 'yes',
+      sourceLang: 'Español',
+      targetLang: 'English',
+      numPages: '1',
+      translationPurpose: 'USCIS Inmigración',
+      recordType: 'birth',
+      stateOfRecord: 'Texas',
+      relationship: 'Titular / Self',
+      passportType: 'renewal',
+      passportAge: 'adult',
+      needsPhotos: true,
+      vehicleYear: '2022',
+      vehicleMake: 'Toyota',
+      vehicleModel: 'RAV4',
+      vin: '',
+      insuranceType: 'Auto Personal',
+      estimatedValue: '',
+    });
+    setCustomer({
+      firstName: '',
+      lastName: '',
+      phone: '',
+      email: '',
+      address: '',
+      preferredLanguage: language,
+      preferredContactMethod: 'whatsapp',
+      notes: '',
+    });
+    setUploadedFiles([]);
+    setIsSubmitting(false);
+    setGeneratedCaseNumber('');
+    setErrorMessage('');
+    if (modalBodyRef.current) {
+      modalBodyRef.current.scrollTop = 0;
     }
-  }, [initialDivisionId, isOpen]);
+  };
+
+  const handleCloseModal = () => {
+    resetForm();
+    onClose();
+  };
+
+  // Reset to initial clean state whenever modal opens
+  useEffect(() => {
+    if (isOpen) {
+      resetForm(initialDivisionId);
+    }
+  }, [isOpen, initialDivisionId]);
+
+  // Scroll to top whenever step changes
+  useEffect(() => {
+    if (modalBodyRef.current) {
+      modalBodyRef.current.scrollTop = 0;
+    }
+  }, [step]);
+
+  // Close on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        handleCloseModal();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -143,6 +269,86 @@ export const UniversalIntakeModal: React.FC<UniversalIntakeModalProps> = ({
       const newCaseId = `LUM-2026-${Math.floor(1000 + Math.random() * 9000)}`;
       setGeneratedCaseNumber(newCaseId);
 
+      const apostilleDetails = division === 'apostille' ? {
+        modalidad: APOSTILLE_OPTIONS[flowData.apostilleUrgency || 'regular'].title[language],
+        plazo: APOSTILLE_OPTIONS[flowData.apostilleUrgency || 'regular'].timeDesc[language],
+        precioBase: `$${APOSTILLE_OPTIONS[flowData.apostilleUrgency || 'regular'].price} USD`,
+        traduccion: flowData.needsTranslation ? `Sí (+$${TRANSLATION_SURCHARGE} USD)` : 'No requerida',
+        totalEstimado: `$${APOSTILLE_OPTIONS[flowData.apostilleUrgency || 'regular'].price + (flowData.needsTranslation ? TRANSLATION_SURCHARGE : 0)} USD`,
+        destinoCorreo: OPERATIONS_EMAIL,
+        documentoOriginalRequerido: 'Indispensable original físico para trámite presencial',
+      } : null;
+
+      const priorityLevel: PriorityLevel = division === 'apostille' && flowData.apostilleUrgency === 'express'
+        ? 'urgente'
+        : division === 'apostille' && flowData.apostilleUrgency === 'fast'
+        ? 'alta'
+        : 'normal';
+
+      // Extract only division-relevant flow fields to prevent polluting other service data
+      const getDivisionSpecificData = (div: ServiceDivisionId, data: typeof flowData) => {
+        switch (div) {
+          case 'apostille':
+            return {
+              countryOfUse: data.countryOfUse,
+              issuingState: data.issuingState,
+              apostilleUrgency: data.apostilleUrgency,
+              needsTranslation: data.needsTranslation,
+              deliveryMethod: data.deliveryMethod,
+              acknowledgedOriginalRequired: data.acknowledgedOriginalRequired,
+            };
+          case 'notary':
+            return {
+              numSigners: data.numSigners,
+              witnessRequired: data.witnessRequired,
+              hasNotaryDraft: data.hasNotaryDraft,
+            };
+          case 'translation':
+            return {
+              sourceLang: data.sourceLang,
+              targetLang: data.targetLang,
+              numPages: data.numPages,
+              translationPurpose: data.translationPurpose,
+            };
+          case 'vital-records':
+            return {
+              recordType: data.recordType,
+              stateOfRecord: data.stateOfRecord,
+              relationship: data.relationship,
+            };
+          case 'passport':
+            return {
+              passportType: data.passportType,
+              passportAge: data.passportAge,
+              needsPhotos: data.needsPhotos,
+            };
+          case 'vehicles':
+          case 'insurance':
+            return {
+              vehicleYear: data.vehicleYear,
+              vehicleMake: data.vehicleMake,
+              vehicleModel: data.vehicleModel,
+              vin: data.vin,
+              insuranceType: data.insuranceType,
+              estimatedValue: data.estimatedValue,
+            };
+          default:
+            return data;
+        }
+      };
+
+      const specificFields = getDivisionSpecificData(division, flowData);
+      const cleanCustomerNotes = customer.notes.trim();
+      const notesParts: string[] = [];
+      if (cleanCustomerNotes) {
+        notesParts.push(cleanCustomerNotes);
+      }
+      notesParts.push(`[Detalles específicos: ${JSON.stringify(specificFields)}]`);
+      if (apostilleDetails) {
+        notesParts.push(`[Apostillado: ${JSON.stringify(apostilleDetails)}]`);
+      }
+      notesParts.push(`[Documentación enviada a ${OPERATIONS_EMAIL}]`);
+
       const newRecord: ClientRecord = {
         id: `cli-${Date.now()}`,
         caseNumber: newCaseId,
@@ -157,11 +363,11 @@ export const UniversalIntakeModal: React.FC<UniversalIntakeModalProps> = ({
         serviceId: serviceId || currentServiceObj.id,
         serviceName: currentServiceObj ? currentServiceObj.name[language] : division,
         status: 'NEW' as CrmStatus,
-        priority: 'normal' as PriorityLevel,
+        priority: priorityLevel,
         paymentStatus: 'pending' as PaymentStatus,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        notes: `${customer.notes} [Detalles específicos: ${JSON.stringify(flowData)}]`,
+        notes: notesParts.join(' '),
         assignedTo: 'Mesa de Entrada Lumiel',
         documents: uploadedFiles.map((file, idx) => ({
           id: `doc-up-${idx}-${Date.now()}`,
@@ -170,14 +376,14 @@ export const UniversalIntakeModal: React.FC<UniversalIntakeModalProps> = ({
           uploadedAt: new Date().toISOString().split('T')[0],
           type: file.type,
           status: 'pending',
-          notes: 'Documento cargado desde portal web de autoservicio',
+          notes: `Documento cargado desde portal web y canalizado a ${OPERATIONS_EMAIL}`,
         })),
         activityLogs: [
           {
             id: `log-${Date.now()}`,
             timestamp: new Date().toLocaleString(),
             author: 'Portal Web Inteligente',
-            action: `Expediente generado con ${uploadedFiles.length} documento(s) adjuntos`,
+            action: `Expediente generado con ${uploadedFiles.length} documento(s) adjuntos. Toda documentación canalizada a ${OPERATIONS_EMAIL}.${division === 'apostille' ? ` Modalidad: ${flowData.apostilleUrgency} (Original requerido para trámite presencial).` : ''}`,
           },
         ],
       };
@@ -189,8 +395,18 @@ export const UniversalIntakeModal: React.FC<UniversalIntakeModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl bg-[#F8F6F1] rounded-2xl shadow-2xl border border-[#DCC9A7] overflow-hidden my-auto">
+    <div 
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          handleCloseModal();
+        }
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200"
+    >
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-2xl bg-[#F8F6F1] rounded-2xl shadow-2xl border border-[#DCC9A7] overflow-hidden my-auto"
+      >
         {/* Modal Header */}
         <div className="bg-[#0F2747] text-white px-6 py-4 flex items-center justify-between border-b border-[#C9A96B]/30">
           <div>
@@ -203,7 +419,7 @@ export const UniversalIntakeModal: React.FC<UniversalIntakeModalProps> = ({
           </div>
 
           <button
-            onClick={onClose}
+            onClick={handleCloseModal}
             className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -234,7 +450,7 @@ export const UniversalIntakeModal: React.FC<UniversalIntakeModalProps> = ({
         )}
 
         {/* Modal Body */}
-        <div className="p-6 max-h-[75vh] overflow-y-auto">
+        <div ref={modalBodyRef} className="p-6 max-h-[75vh] overflow-y-auto">
           {/* STEP 1: SERVICE CATEGORY SELECTION */}
           {step === 1 && (
             <div className="space-y-4">
@@ -324,49 +540,158 @@ export const UniversalIntakeModal: React.FC<UniversalIntakeModalProps> = ({
 
               {/* DYNAMIC FORM PER DIVISION */}
               {division === 'apostille' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-[#0F2747] mb-1">
-                      {isEs ? 'País de Destino (Donde surtirá efecto)' : 'Country of Use'}
-                    </label>
-                    <input
-                      type="text"
-                      value={flowData.countryOfUse}
-                      onChange={(e) => setFlowData({ ...flowData, countryOfUse: e.target.value })}
-                      placeholder="Ej. México, Colombia, España"
-                      className="w-full text-xs p-2.5 bg-white rounded-lg border border-[#DCC9A7] focus:border-[#0F2747] focus:outline-hidden"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-[#0F2747] mb-1">
-                      {isEs ? 'Estado Emisor del Documento' : 'Issuing State / Jurisdiction'}
-                    </label>
-                    <select
-                      value={flowData.issuingState}
-                      onChange={(e) => setFlowData({ ...flowData, issuingState: e.target.value })}
-                      className="w-full text-xs p-2.5 bg-white rounded-lg border border-[#DCC9A7] focus:border-[#0F2747] focus:outline-hidden"
-                    >
-                      <option value="Texas">Texas (Houston / Austin)</option>
-                      <option value="California">California</option>
-                      <option value="Florida">Florida</option>
-                      <option value="New York">New York</option>
-                      <option value="Otro Estado">Otro Estado de EE. UU.</option>
-                    </select>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="flex items-center gap-2 cursor-pointer p-3 bg-white rounded-xl border border-[#DCC9A7]">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-[#0F2747] mb-1">
+                        {isEs ? 'País de Destino (Donde surtirá efecto)' : 'Country of Use'}
+                      </label>
                       <input
-                        type="checkbox"
-                        checked={flowData.needsTranslation}
-                        onChange={(e) => setFlowData({ ...flowData, needsTranslation: e.target.checked })}
-                        className="rounded text-[#0F2747] focus:ring-[#C9A96B]"
+                        type="text"
+                        value={flowData.countryOfUse}
+                        onChange={(e) => setFlowData({ ...flowData, countryOfUse: e.target.value })}
+                        placeholder="Ej. México, Colombia, España"
+                        className="w-full text-xs p-2.5 bg-white rounded-lg border border-[#DCC9A7] focus:border-[#0F2747] focus:outline-hidden"
                       />
-                      <span className="text-xs text-[#2E2E2E]">
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-[#0F2747] mb-1">
+                        {isEs ? 'Estado Emisor del Documento' : 'Issuing State / Jurisdiction'}
+                      </label>
+                      <select
+                        value={flowData.issuingState}
+                        onChange={(e) => setFlowData({ ...flowData, issuingState: e.target.value })}
+                        className="w-full text-xs p-2.5 bg-white rounded-lg border border-[#DCC9A7] focus:border-[#0F2747] focus:outline-hidden"
+                      >
+                        <option value="Texas">Texas (Houston / Austin)</option>
+                        <option value="California">California</option>
+                        <option value="Florida">Florida</option>
+                        <option value="New York">New York</option>
+                        <option value="Otro Estado">Otro Estado de EE. UU.</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Processing Time, Urgency & Cost Section (Requirement 2) */}
+                  <div className="pt-3 border-t border-[#DCC9A7]/40 space-y-3">
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-[#0F2747] uppercase tracking-wider">
+                          {isEs ? 'Tiempo de Procesamiento, Urgencia y Costo' : 'Processing Speed, Urgency & Cost'}
+                        </label>
+                        <span className="text-[10px] font-semibold text-[#C9A96B] bg-[#0F2747] px-2 py-0.5 rounded-full">
+                          {isEs ? 'Aplica a todo apostillado' : 'Applies to all apostilles'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#887D6B] mt-0.5 font-medium">
                         {isEs
-                          ? '¿Requiere además traducción certificada del documento apostillado?'
-                          : 'Do you also require certified translation of the apostilled record?'}
-                      </span>
-                    </label>
+                          ? 'El tiempo de procesamiento regular será de entre 2 a 3 semanas.'
+                          : 'Standard processing time is between 2 to 3 weeks.'}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      {(Object.keys(APOSTILLE_OPTIONS) as ApostilleUrgency[]).map((urgencyKey) => {
+                        const opt = APOSTILLE_OPTIONS[urgencyKey];
+                        const isSelected = flowData.apostilleUrgency === urgencyKey;
+                        return (
+                          <div
+                            key={urgencyKey}
+                            onClick={() => setFlowData({ ...flowData, apostilleUrgency: urgencyKey })}
+                            className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
+                              isSelected
+                                ? 'bg-white border-[#0F2747] shadow-sm ring-1 ring-[#0F2747]'
+                                : 'bg-white/60 border-[#DCC9A7]/60 hover:bg-white'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="radio"
+                                name="apostilleUrgency"
+                                checked={isSelected}
+                                onChange={() => setFlowData({ ...flowData, apostilleUrgency: urgencyKey })}
+                                className="text-[#0F2747] focus:ring-[#C9A96B]"
+                              />
+                              <div>
+                                <div className="text-xs font-bold text-[#0F2747]">
+                                  {opt.title[language]}
+                                </div>
+                                <div className="text-[11px] text-[#887D6B] flex items-center gap-1.5 mt-0.5">
+                                  <span>⏱ {isEs ? 'Plazo:' : 'Timeline:'} {opt.timeDesc[language]}</span>
+                                  {opt.popular && (
+                                    <span className="text-[9px] bg-amber-100 text-amber-900 font-bold px-1.5 py-0.2 rounded-sm">
+                                      {isEs ? 'Más solicitado' : 'Most popular'}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-sm font-bold text-[#0F2747] font-mono">${opt.price}</span>
+                              <span className="text-[10px] text-[#887D6B] block">USD</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Translation Add-on Option */}
+                    <div className="pt-1">
+                      <label
+                        className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                          flowData.needsTranslation
+                            ? 'bg-white border-[#8A9A7B] shadow-xs ring-1 ring-[#8A9A7B]'
+                            : 'bg-white/60 border-[#DCC9A7]/60 hover:bg-white'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={flowData.needsTranslation}
+                          onChange={(e) => setFlowData({ ...flowData, needsTranslation: e.target.checked })}
+                          className="mt-0.5 rounded text-[#0F2747] focus:ring-[#C9A96B]"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-[#0F2747]">
+                              {isEs ? 'Traducción' : 'Certified Translation'}: + ${TRANSLATION_SURCHARGE} USD
+                            </span>
+                            <span className="text-xs font-bold text-[#8A9A7B] font-mono">
+                              +$120 USD
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-[#887D6B] mt-0.5">
+                            {isEs
+                              ? 'Aplica para todos los servicios de apostillado. Traducción certificada oficial requerida comúnmente para registros consulares o autoridades internacionales.'
+                              : 'Applies to all apostille services. Certified translation required by foreign consulates or immigration authorities.'}
+                          </p>
+                        </div>
+                      </label>
+                    </div>
+
+                    {/* Live Quote Breakdown Card */}
+                    <div className="p-3.5 bg-[#0F2747] text-white rounded-xl shadow-xs">
+                      <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2">
+                        <div>
+                          <span className="text-[10px] text-[#C9A96B] uppercase font-mono tracking-wider block font-bold">
+                            {isEs ? 'Desglose y Presupuesto Oficial' : 'Official Pricing Breakdown'}
+                          </span>
+                          <span className="text-xs text-[#EAE3D8]">
+                            {APOSTILLE_OPTIONS[flowData.apostilleUrgency || 'regular'].timeDesc[language]} · {flowData.needsTranslation ? (isEs ? 'Con Traducción (+$120)' : 'With Translation (+$120)') : (isEs ? 'Solo Apostillado' : 'Apostille Only')}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-lg font-bold font-mono text-[#F8F6F1]">
+                            ${APOSTILLE_OPTIONS[flowData.apostilleUrgency || 'regular'].price + (flowData.needsTranslation ? TRANSLATION_SURCHARGE : 0)} USD
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center text-[11px] text-[#DCC9A7]">
+                        <span>{isEs ? 'Tarifa transparente garantizada' : 'Transparent rate guaranteed'}</span>
+                        <span className="font-semibold text-white">
+                          ⏱ {APOSTILLE_OPTIONS[flowData.apostilleUrgency || 'regular'].timeDesc[language]}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -745,6 +1070,55 @@ export const UniversalIntakeModal: React.FC<UniversalIntakeModalProps> = ({
                 </p>
               </div>
 
+              {/* Requirement #3: Nota obligatoria para trámite de apostillado */}
+              <div className="p-4 bg-amber-50/95 rounded-2xl border-2 border-amber-300 text-[#0F2747] space-y-2.5 shadow-xs">
+                <div className="flex items-start gap-2.5">
+                  <AlertCircle className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-1.5 text-xs">
+                    <h5 className="font-bold text-amber-900 leading-snug">
+                      #Nota: Una fotografía o copia del documento no es suficiente para realizar el apostillado. Es necesario recibir el documento original antes de iniciar el trámite.
+                    </h5>
+                    <p className="text-amber-950/90 leading-relaxed">
+                      Para realizar cualquier trámite de apostillado, es indispensable contar con el documento original, ya que el proceso se realiza de manera presencial.
+                    </p>
+                    <p className="text-amber-950/80 leading-relaxed italic bg-amber-100/70 p-2.5 rounded-xl border border-amber-200">
+                      El adjuntar una imagen o PDF del documento únicamente es para agilizar el trámite mientras llegan los documentos originales.
+                    </p>
+                  </div>
+                </div>
+
+                <label className="flex items-start gap-2.5 pt-2 border-t border-amber-200/80 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={flowData.acknowledgedOriginalRequired}
+                    onChange={(e) => setFlowData({ ...flowData, acknowledgedOriginalRequired: e.target.checked })}
+                    className="mt-0.5 rounded text-amber-700 focus:ring-amber-500"
+                  />
+                  <span className="text-[11px] font-semibold text-amber-900 leading-tight">
+                    {isEs
+                      ? 'Comprendo que debo entregar o enviar los documentos originales físicos a la oficina para tramitar el apostillado presencial.'
+                      : 'I acknowledge that I must bring or mail the physical original document to the office for in-person apostille processing.'}
+                  </span>
+                </label>
+              </div>
+
+              {/* Requirement #5: Toda documentación enviada al correo oficial */}
+              <div className="p-3.5 bg-blue-50/90 rounded-xl border border-blue-200 flex items-start gap-2.5 text-xs text-blue-950 shadow-xs">
+                <span className="text-base flex-shrink-0">📧</span>
+                <div className="leading-relaxed">
+                  <strong className="block text-blue-950 mb-0.5">
+                    {isEs ? 'Canalización Oficial de Documentos:' : 'Official Documentation Routing:'}
+                  </strong>
+                  <span className="text-[11px] text-blue-900">
+                    {isEs
+                      ? 'Toda documentación del Formulario Universal de Solicitud será enviada directamente al correo electrónico:'
+                      : 'All documentation from the Universal Service Request will be transmitted directly to:'}{' '}
+                    <strong className="font-mono text-[#0F2747] font-bold underline">{OPERATIONS_EMAIL}</strong>
+                    {isEs ? ' para su revisión, apertura y resguardo notarial confidencial.' : ' for immediate review and official verification.'}
+                  </span>
+                </div>
+              </div>
+
               {/* Upload Dropzone */}
               <div className="border-2 border-dashed border-[#C9A96B] rounded-2xl p-6 text-center bg-white/70 hover:bg-white transition-colors cursor-pointer relative">
                 <input
@@ -779,7 +1153,7 @@ export const UniversalIntakeModal: React.FC<UniversalIntakeModalProps> = ({
                         <div>
                           <div className="text-xs font-semibold text-[#0F2747]">{file.name}</div>
                           <div className="text-[10px] text-[#887D6B] font-mono">
-                            {isEs ? 'DOCUMENTO' : 'DOCUMENT'} 0{index + 1} · {file.size} · ✓ {isEs ? 'Subido' : 'Uploaded'}
+                            {isEs ? 'DOCUMENTO' : 'DOCUMENT'} 0{index + 1} · {file.size} · ✓ {isEs ? `Canalizado a ${OPERATIONS_EMAIL}` : `Routed to ${OPERATIONS_EMAIL}`}
                           </div>
                         </div>
                       </div>
@@ -841,33 +1215,94 @@ export const UniversalIntakeModal: React.FC<UniversalIntakeModalProps> = ({
                 </>
               )}
 
+              {/* Requirement #5: Email Destination Confirmation Box */}
+              <div className="p-3.5 bg-blue-50/90 rounded-xl border border-blue-200 max-w-md mx-auto text-left text-xs text-blue-950 flex items-start gap-2.5 shadow-xs">
+                <span className="text-base flex-shrink-0">📧</span>
+                <div className="space-y-1">
+                  <span className="font-bold text-blue-900 block">
+                    {isEs ? 'Expediente y Documentación remitidos a:' : 'Case & Documentation dispatched to:'}
+                  </span>
+                  <p className="font-mono text-xs font-bold text-[#0F2747]">
+                    {OPERATIONS_EMAIL}
+                  </p>
+                  <p className="text-[11px] text-blue-800 leading-snug">
+                    {isEs
+                      ? 'Si necesita enviar documentos adicionales o el número de rastreo de su envío por paquetería, puede responder directamente a este correo citando su número de expediente.'
+                      : 'If you need to send extra documents or your parcel tracking number, send them directly referencing your case number.'}
+                  </p>
+                </div>
+              </div>
+
               {/* Case Reference Card */}
-              <div className="p-4 bg-white rounded-xl border border-[#C9A96B] max-w-md mx-auto text-left shadow-md">
-                <div className="flex justify-between items-center border-b border-[#F8F6F1] pb-2 mb-2">
+              <div className="p-4 bg-white rounded-xl border border-[#C9A96B] max-w-md mx-auto text-left shadow-md space-y-2">
+                <div className="flex justify-between items-center border-b border-[#F8F6F1] pb-2 mb-1">
                   <span className="text-xs font-medium text-[#887D6B]">{isEs ? 'Número de Expediente' : 'Case Number'}:</span>
                   <span className="font-mono text-sm font-bold text-[#0F2747]">{generatedCaseNumber}</span>
                 </div>
-                <div className="flex justify-between items-center text-xs py-1">
+                <div className="flex justify-between items-center text-xs py-0.5">
                   <span className="text-[#887D6B]">{isEs ? 'Trámite' : 'Service'}:</span>
                   <span className="font-semibold text-[#2E2E2E]">{currentServiceObj.name[language]}</span>
                 </div>
-                <div className="flex justify-between items-center text-xs py-1">
+                {division === 'apostille' && (
+                  <>
+                    <div className="flex justify-between items-center text-xs py-0.5">
+                      <span className="text-[#887D6B]">{isEs ? 'Modalidad / Tiempo' : 'Timeline'}:</span>
+                      <span className="font-semibold text-[#0F2747]">
+                        {APOSTILLE_OPTIONS[flowData.apostilleUrgency || 'regular'].timeDesc[language]} (${APOSTILLE_OPTIONS[flowData.apostilleUrgency || 'regular'].price} USD)
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs py-0.5">
+                      <span className="text-[#887D6B]">{isEs ? 'Traducción' : 'Translation'}:</span>
+                      <span className="font-semibold text-[#2E2E2E]">
+                        {flowData.needsTranslation ? (isEs ? 'Sí (+$120 USD)' : 'Yes (+$120 USD)') : (isEs ? 'No requerida' : 'Not required')}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs py-1 bg-[#F8F6F1] px-2.5 rounded-lg border border-[#DCC9A7]/50">
+                      <span className="font-bold text-[#0F2747]">{isEs ? 'Total Estimado' : 'Estimated Total'}:</span>
+                      <span className="font-mono font-bold text-sm text-[#0F2747]">
+                        ${APOSTILLE_OPTIONS[flowData.apostilleUrgency || 'regular'].price + (flowData.needsTranslation ? TRANSLATION_SURCHARGE : 0)} USD
+                      </span>
+                    </div>
+                  </>
+                )}
+                <div className="flex justify-between items-center text-xs py-0.5">
                   <span className="text-[#887D6B]">{isEs ? 'Solicitante' : 'Client'}:</span>
                   <span className="font-semibold text-[#2E2E2E]">{customer.firstName} {customer.lastName}</span>
                 </div>
-                <div className="flex justify-between items-center text-xs py-1">
+                <div className="flex justify-between items-center text-xs py-0.5">
+                  <span className="text-[#887D6B]">{isEs ? 'Teléfono / WhatsApp' : 'Phone'}:</span>
+                  <span className="font-semibold text-[#2E2E2E]">{customer.phone}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs py-0.5">
                   <span className="text-[#887D6B]">{isEs ? 'Estado Inicial' : 'Status'}:</span>
                   <span className="font-semibold text-[#8A9A7B]">NUEVO (NEW) · En revisión</span>
                 </div>
               </div>
 
-              <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
+              {/* Requirement #1: Buttons to submit another request or close and return */}
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <button
-                  onClick={onClose}
-                  className="w-full sm:w-auto px-6 py-2.5 bg-[#0F2747] text-white rounded-xl text-xs font-semibold hover:bg-[#16355C] transition-colors cursor-pointer"
+                  onClick={() => resetForm(division)}
+                  className="w-full sm:w-auto px-5 py-2.5 bg-[#C9A96B] hover:bg-[#b89552] text-[#0F2747] rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <span>{isEs ? 'Hacer otra nueva solicitud' : 'Submit Another Request'}</span>
+                </button>
+                <button
+                  onClick={handleCloseModal}
+                  className="w-full sm:w-auto px-5 py-2.5 bg-[#0F2747] text-white rounded-xl text-xs font-semibold hover:bg-[#16355C] transition-colors cursor-pointer"
                 >
                   {isEs ? 'Cerrar y Volver al Portal' : 'Close and Return'}
                 </button>
+              </div>
+
+              {/* Direct Mailto Fallback Link */}
+              <div className="pt-1">
+                <a
+                  href={`mailto:${OPERATIONS_EMAIL}?subject=Documentos%20Expediente%20${generatedCaseNumber}&body=Estimado%20equipo%20de%20Multiservicios%20Lumiel,%0A%0AEnvío%20documentación%20correspondiente%20a%20mi%20expediente%20${generatedCaseNumber}.%0A%0ASolicitante:%20${encodeURIComponent(customer.firstName)}%20${encodeURIComponent(customer.lastName)}%0ATeléfono:%20${encodeURIComponent(customer.phone)}`}
+                  className="text-[11px] text-[#0F2747] hover:underline font-medium inline-flex items-center gap-1"
+                >
+                  <span>✉️ {isEs ? `Enviar documentación adicional por email a ${OPERATIONS_EMAIL}` : `Email additional files to ${OPERATIONS_EMAIL}`}</span>
+                </a>
               </div>
             </div>
           )}
@@ -886,7 +1321,7 @@ export const UniversalIntakeModal: React.FC<UniversalIntakeModalProps> = ({
               </button>
             ) : (
               <button
-                onClick={onClose}
+                onClick={handleCloseModal}
                 className="px-4 py-2 text-xs font-medium text-[#887D6B] hover:text-[#2E2E2E] cursor-pointer"
               >
                 {isEs ? 'Cancelar' : 'Cancel'}

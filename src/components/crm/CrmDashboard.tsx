@@ -38,7 +38,14 @@ import {
   BarChart2,
   BarChart3,
   Users as UsersIcon,
-  ArrowLeft
+  ArrowLeft,
+  Trash2,
+  Edit3,
+  ExternalLink,
+  Globe,
+  MapPin,
+  Sparkles,
+  Check
 } from 'lucide-react';
 import { CrmMonthlySummaryChart } from './CrmMonthlySummaryChart.tsx';
 import { CrmUserManager } from './CrmUserManager.tsx';
@@ -48,10 +55,152 @@ interface CrmDashboardProps {
   clients: ClientRecord[];
   onUpdateClient: (updated: ClientRecord) => void;
   onCreateClient: (newClient: ClientRecord) => void;
+  onDeleteClient?: (clientId: string) => void;
   users: CrmUser[];
   onUpdateUsers: (users: CrmUser[]) => void;
   onExitToPortal?: () => void;
 }
+
+export interface ParsedCaseDetails {
+  customerNotes: string;
+  specificDetails: Record<string, any> | null;
+  apostilleDetails: {
+    modalidad?: string;
+    plazo?: string;
+    precioBase?: string;
+    traduccion?: string;
+    totalEstimado?: string;
+    destinoCorreo?: string;
+    documentoOriginalRequerido?: string;
+  } | null;
+  emailSentTo: string | null;
+}
+
+export const parseCaseInstructions = (rawNotes: string = '', division: ServiceDivisionId): ParsedCaseDetails => {
+  if (!rawNotes) {
+    return {
+      customerNotes: '',
+      specificDetails: null,
+      apostilleDetails: null,
+      emailSentTo: null,
+    };
+  }
+
+  let text = rawNotes;
+  let specificDetails: Record<string, any> | null = null;
+  let apostilleDetails: any = null;
+  let emailSentTo: string | null = null;
+
+  // 1. Extract [Apostillado: {...}]
+  const apostilleMatch = text.match(/\[Apostillado:\s*(\{.*?\})\]/);
+  if (apostilleMatch) {
+    try {
+      apostilleDetails = JSON.parse(apostilleMatch[1]);
+    } catch (e) {
+      console.warn('Error parsing apostille json:', e);
+    }
+    text = text.replace(apostilleMatch[0], '');
+  }
+
+  // 2. Extract [Detalles específicos: {...}]
+  const specificMatch = text.match(/\[Detalles específicos:\s*(\{.*?\})\]/);
+  if (specificMatch) {
+    try {
+      const parsed = JSON.parse(specificMatch[1]);
+      // Filter keys relevant to the division to eliminate accidental pollution from other services
+      const relevantKeysByDivision: Record<string, string[]> = {
+        'apostille': ['countryOfUse', 'issuingState', 'apostilleUrgency', 'needsTranslation', 'deliveryMethod', 'acknowledgedOriginalRequired'],
+        'notary': ['numSigners', 'witnessRequired', 'hasNotaryDraft'],
+        'translation': ['sourceLang', 'targetLang', 'numPages', 'translationPurpose'],
+        'vital-records': ['recordType', 'stateOfRecord', 'relationship'],
+        'vital_records': ['recordType', 'stateOfRecord', 'relationship'],
+        'passport': ['passportType', 'passportAge', 'needsPhotos'],
+        'passports': ['passportType', 'passportAge', 'needsPhotos'],
+        'vehicles': ['vehicleYear', 'vehicleMake', 'vehicleModel', 'vin', 'insuranceType', 'estimatedValue'],
+        'insurance': ['vehicleYear', 'vehicleMake', 'vehicleModel', 'vin', 'insuranceType', 'estimatedValue'],
+        'auto_insurance': ['vehicleYear', 'vehicleMake', 'vehicleModel', 'vin', 'insuranceType', 'estimatedValue'],
+      };
+
+      const allowedKeys = relevantKeysByDivision[division] || Object.keys(parsed);
+      const filtered: Record<string, any> = {};
+      for (const k of allowedKeys) {
+        if (parsed[k] !== undefined && parsed[k] !== '') {
+          filtered[k] = parsed[k];
+        }
+      }
+      specificDetails = Object.keys(filtered).length > 0 ? filtered : parsed;
+    } catch (e) {
+      console.warn('Error parsing specific json:', e);
+    }
+    text = text.replace(specificMatch[0], '');
+  }
+
+  // 3. Extract [Documentación enviada a ...]
+  const emailMatch = text.match(/\[Documentación enviada a\s*([^\]]+)\]/);
+  if (emailMatch) {
+    emailSentTo = emailMatch[1].trim();
+    text = text.replace(emailMatch[0], '');
+  }
+
+  const customerNotes = text.trim();
+
+  return {
+    customerNotes,
+    specificDetails,
+    apostilleDetails,
+    emailSentTo,
+  };
+};
+
+export const SPECIFIC_FIELD_LABELS: Record<string, { es: string; en: string }> = {
+  countryOfUse: { es: 'País de Uso / Destino', en: 'Country of Destination' },
+  issuingState: { es: 'Estado Emisor del Documento', en: 'Document Issuing State' },
+  apostilleUrgency: { es: 'Urgencia del Trámite', en: 'Processing Urgency' },
+  needsTranslation: { es: 'Traducción Certificada', en: 'Certified Translation' },
+  deliveryMethod: { es: 'Método de Entrega', en: 'Delivery Method' },
+  acknowledgedOriginalRequired: { es: 'Aceptación de Documento Físico', en: 'Original Physical Document Ack' },
+  numSigners: { es: 'Número de Firmantes', en: 'Number of Signers' },
+  witnessRequired: { es: 'Testigos Requeridos', en: 'Witnesses Required' },
+  hasNotaryDraft: { es: 'Borrador / Minuta Lista', en: 'Draft Document Ready' },
+  sourceLang: { es: 'Idioma de Origen', en: 'Source Language' },
+  targetLang: { es: 'Idioma de Destino', en: 'Target Language' },
+  numPages: { es: 'Número de Páginas', en: 'Number of Pages' },
+  translationPurpose: { es: 'Propósito de la Traducción', en: 'Translation Purpose' },
+  recordType: { es: 'Tipo de Acta / Registro', en: 'Record Type' },
+  stateOfRecord: { es: 'Estado del Registro', en: 'State of Record' },
+  relationship: { es: 'Parentesco / Titular', en: 'Relationship / Applicant' },
+  passportType: { es: 'Tipo de Trámite', en: 'Passport Service Type' },
+  passportAge: { es: 'Categoría de Edad', en: 'Age Category' },
+  needsPhotos: { es: 'Fotografías de Pasaporte', en: 'Passport Photos Included' },
+  vehicleYear: { es: 'Año del Vehículo', en: 'Vehicle Year' },
+  vehicleMake: { es: 'Marca del Vehículo', en: 'Vehicle Make' },
+  vehicleModel: { es: 'Modelo del Vehículo', en: 'Vehicle Model' },
+  vin: { es: 'Número de VIN', en: 'VIN' },
+  insuranceType: { es: 'Tipo de Póliza', en: 'Insurance Policy Type' },
+  estimatedValue: { es: 'Valor Estimado', en: 'Estimated Value' },
+};
+
+export const formatSpecificValue = (key: string, val: any, isEs: boolean) => {
+  if (typeof val === 'boolean') {
+    return val ? (isEs ? 'Sí' : 'Yes') : (isEs ? 'No' : 'No');
+  }
+  if (key === 'apostilleUrgency') {
+    if (val === 'express') return isEs ? '⚡ Express en 24 horas ($700 USD)' : '⚡ Express 24 hours ($700 USD)';
+    if (val === 'fast') return isEs ? '🚀 Rápido en 1 semana ($550 USD)' : '🚀 Fast 1 week ($550 USD)';
+    return isEs ? '📋 Regular 2 a 3 semanas ($150 USD)' : '📋 Regular 2 to 3 weeks ($150 USD)';
+  }
+  if (key === 'deliveryMethod') {
+    if (val === 'pickup') return isEs ? 'Retiro presencial en oficina Houston' : 'In-person pickup at Houston office';
+    if (val === 'mail') return isEs ? 'Envío postal certificado a domicilio' : 'Certified mail delivery';
+  }
+  if (key === 'needsTranslation') {
+    return val ? (isEs ? 'Sí (+ $120 USD)' : 'Yes (+ $120 USD)') : (isEs ? 'No requerida' : 'Not required');
+  }
+  if (key === 'acknowledgedOriginalRequired') {
+    return val ? (isEs ? '✓ Confirmado original físico' : '✓ Physical original confirmed') : (isEs ? 'Pendiente de entrega física' : 'Pending physical delivery');
+  }
+  return String(val);
+};
 
 export const CRM_STATUS_FLOW: { id: CrmStatus; label: { es: string; en: string }; color: string }[] = [
   { id: 'NEW', label: { es: 'Nuevo', en: 'New' }, color: 'bg-blue-100 text-blue-800 border-blue-300' },
@@ -73,6 +222,7 @@ export const CrmDashboard: React.FC<CrmDashboardProps> = ({
   clients,
   onUpdateClient,
   onCreateClient,
+  onDeleteClient,
   users,
   onUpdateUsers,
   onExitToPortal,
@@ -96,8 +246,54 @@ export const CrmDashboard: React.FC<CrmDashboardProps> = ({
 
   const [showMonthlyAnalytics, setShowMonthlyAnalytics] = useState<boolean>(true);
   const [selectedClient, setSelectedClient] = useState<ClientRecord | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<ClientRecord | null>(null);
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [editedStaffNote, setEditedStaffNote] = useState('');
   const [isNewClientModalOpen, setIsNewClientModalOpen] = useState(false);
   const [newLogText, setNewLogText] = useState('');
+
+  const handleOpenDossier = (client: ClientRecord) => {
+    setSelectedClient(client);
+    setShowDeleteConfirm(false);
+    setIsEditingNotes(false);
+    const parsed = parseCaseInstructions(client.notes, client.division);
+    setEditedStaffNote(parsed.customerNotes);
+  };
+
+  const handleSaveStaffNotes = (client: ClientRecord) => {
+    const parsed = parseCaseInstructions(client.notes, client.division);
+    const metadataParts: string[] = [];
+    if (parsed.specificDetails && Object.keys(parsed.specificDetails).length > 0) {
+      metadataParts.push(`[Detalles específicos: ${JSON.stringify(parsed.specificDetails)}]`);
+    }
+    if (parsed.apostilleDetails) {
+      metadataParts.push(`[Apostillado: ${JSON.stringify(parsed.apostilleDetails)}]`);
+    }
+    if (parsed.emailSentTo) {
+      metadataParts.push(`[Documentación enviada a ${parsed.emailSentTo}]`);
+    }
+
+    const updatedNotes = [editedStaffNote.trim(), ...metadataParts].filter(Boolean).join(' ');
+    const updatedClient: ClientRecord = {
+      ...client,
+      notes: updatedNotes,
+      updatedAt: new Date().toISOString(),
+      activityLogs: [
+        {
+          id: `log-${Date.now()}`,
+          timestamp: new Date().toLocaleString(),
+          author: 'Staff CRM',
+          action: isEs ? 'Instrucciones y observaciones del expediente actualizadas.' : 'Case instructions and notes updated.',
+        },
+        ...client.activityLogs,
+      ],
+    };
+
+    onUpdateClient(updatedClient);
+    setSelectedClient(updatedClient);
+    setIsEditingNotes(false);
+  };
 
   // Filtering Logic
   const filteredClients = useMemo(() => {
@@ -785,7 +981,7 @@ export const CrmDashboard: React.FC<CrmDashboardProps> = ({
                   Multiservicios Lumiel
                 </div>
                 <p className="text-xs text-gray-700">
-                  550 Greens Pkwy Ste 212B, Houston, TX 77067 • Tel: (346) 521-0662 • multiservicioslumielayi@gmail.com
+                  550 Greens Pkwy Ste 212B, Houston, TX 77067 • Tel: (409) 800-3993 • multiservicioslumielayi@gmail.com
                 </p>
                 <h2 className="text-sm font-semibold text-black mt-1 uppercase tracking-wider">
                   {isEs ? 'Reporte Oficial de Expedientes y Clientes' : 'Official Case & Client Records Report'}
@@ -837,7 +1033,7 @@ export const CrmDashboard: React.FC<CrmDashboardProps> = ({
                         <tr
                           key={client.id}
                           className="hover:bg-[#F8F6F1]/80 transition-colors cursor-pointer group print:hover:bg-transparent print:border-b print:border-gray-200"
-                          onClick={() => setSelectedClient(client)}
+                          onClick={() => handleOpenDossier(client)}
                         >
                           {/* Case Number & Priority */}
                           <td className="py-3.5 px-4 print:py-2 print:px-2">
@@ -927,16 +1123,28 @@ export const CrmDashboard: React.FC<CrmDashboardProps> = ({
 
                           {/* Action (Hidden in Print) */}
                           <td className="py-3.5 px-4 text-right print:hidden">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedClient(client);
-                              }}
-                              className="p-1.5 rounded-lg bg-[#F8F6F1] text-[#0F2747] group-hover:bg-[#0F2747] group-hover:text-white transition-colors"
-                              title="Ver expediente completo"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenDossier(client);
+                                }}
+                                className="p-1.5 rounded-lg bg-[#F8F6F1] text-[#0F2747] hover:bg-[#0F2747] hover:text-white transition-colors cursor-pointer"
+                                title={isEs ? 'Ver expediente completo' : 'View dossier'}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setClientToDelete(client);
+                                }}
+                                className="p-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition-colors cursor-pointer"
+                                title={isEs ? 'Eliminar expediente' : 'Delete case'}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -979,7 +1187,7 @@ export const CrmDashboard: React.FC<CrmDashboardProps> = ({
                     {colClients.map((client) => (
                       <div
                         key={client.id}
-                        onClick={() => setSelectedClient(client)}
+                        onClick={() => handleOpenDossier(client)}
                         className="p-3 bg-white rounded-xl border border-[#DCC9A7]/50 shadow-xs hover:shadow-md transition-all cursor-pointer group"
                       >
                         <div className="flex justify-between items-start mb-1">
@@ -1101,8 +1309,8 @@ export const CrmDashboard: React.FC<CrmDashboardProps> = ({
 
       {/* CLIENT DOSSIER DETAIL MODAL / DRAWER (Section 22 & 23) */}
       {selectedClient && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200 print:hidden">
-          <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl border border-[#DCC9A7] overflow-hidden my-auto max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/70 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200 print:hidden">
+          <div className="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl border border-[#DCC9A7] overflow-hidden my-auto h-[95vh] max-h-[96vh] flex flex-col">
             {/* Modal Header */}
             <div className="bg-[#0F2747] text-white px-6 py-4 flex items-center justify-between border-b border-[#C9A96B]/30">
               <div className="flex items-center gap-3">
@@ -1125,12 +1333,28 @@ export const CrmDashboard: React.FC<CrmDashboardProps> = ({
                 </div>
               </div>
 
-              <button
-                onClick={() => setSelectedClient(null)}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 hover:text-white border border-rose-400/30 flex items-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer"
+                  title={isEs ? 'Eliminar expediente' : 'Delete case'}
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-300" />
+                  <span className="hidden sm:inline">{isEs ? 'Eliminar Expediente' : 'Delete Case'}</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setSelectedClient(null);
+                    setShowDeleteConfirm(false);
+                    setIsEditingNotes(false);
+                  }}
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Stepper Status Bar (Blueprint Section 21) */}
@@ -1165,7 +1389,7 @@ export const CrmDashboard: React.FC<CrmDashboardProps> = ({
             </div>
 
             {/* Modal Body with 2-Column Tabs */}
-            <div className="p-6 overflow-y-auto flex-1 space-y-6">
+            <div className="p-6 overflow-y-auto flex-1 min-h-0 space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* Left Column: Client Info & Documents Vault */}
                 <div className="lg:col-span-7 space-y-5">
@@ -1286,15 +1510,181 @@ export const CrmDashboard: React.FC<CrmDashboardProps> = ({
                     </div>
                   </div>
 
-                  {/* Notes & Specific Details */}
-                  <div className="p-4 bg-[#F8F6F1] rounded-xl border border-[#DCC9A7]/60 text-xs">
-                    <span className="font-bold text-[#0F2747] block mb-1 uppercase tracking-wider">
-                      {isEs ? 'Instrucciones y Observaciones del Caso' : 'Case Notes & Instructions'}
-                    </span>
-                    <p className="text-[#2E2E2E] leading-relaxed bg-white p-3 rounded-lg border border-[#DCC9A7]/40">
-                      {selectedClient.notes || (isEs ? 'Sin notas adicionales.' : 'No additional notes.')}
-                    </p>
-                  </div>
+                  {/* Repaired Notes & Specific Details (Prompt 1.c) */}
+                  {(() => {
+                    const parsedNotes = parseCaseInstructions(selectedClient.notes, selectedClient.division);
+                    const isApostille = selectedClient.division === 'apostille' || !!parsedNotes.apostilleDetails;
+
+                    return (
+                      <div className="p-4 bg-[#F8F6F1] rounded-xl border border-[#DCC9A7]/60 space-y-3.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-[#0F2747] text-xs uppercase tracking-wider flex items-center gap-1.5">
+                            <FileText className="w-4 h-4 text-[#C9A96B]" />
+                            <span>{isEs ? 'Instrucciones y Observaciones del Caso' : 'Case Notes & Instructions'}</span>
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!isEditingNotes) {
+                                setEditedStaffNote(parsedNotes.customerNotes);
+                              }
+                              setIsEditingNotes(!isEditingNotes);
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-semibold bg-white hover:bg-gray-50 text-[#0F2747] border border-[#DCC9A7] transition-colors cursor-pointer"
+                          >
+                            <Edit3 className="w-3 h-3 text-[#C9A96B]" />
+                            <span>{isEditingNotes ? (isEs ? 'Cancelar' : 'Cancel') : (isEs ? 'Editar / Añadir nota' : 'Edit notes')}</span>
+                          </button>
+                        </div>
+
+                        {/* Customer Notes / Staff Editable Form */}
+                        {isEditingNotes ? (
+                          <div className="bg-white p-3 rounded-lg border border-[#C9A96B] space-y-2">
+                            <label className="text-[10.5px] font-bold uppercase text-[#887D6B] block">
+                              {isEs ? 'Editar Observaciones e Instrucciones Internas:' : 'Edit Notes & Internal Instructions:'}
+                            </label>
+                            <textarea
+                              value={editedStaffNote}
+                              onChange={(e) => setEditedStaffNote(e.target.value)}
+                              rows={3}
+                              className="w-full text-xs p-2 rounded-lg border border-[#DCC9A7] focus:outline-none focus:ring-1 focus:ring-[#0F2747] bg-[#F8F6F1]/50 text-[#2E2E2E]"
+                              placeholder={isEs ? 'Escriba notas internas o instrucciones del cliente...' : 'Enter client instructions or internal remarks...'}
+                            />
+                            <div className="flex justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setIsEditingNotes(false)}
+                                className="px-3 py-1 rounded-md text-[11px] font-semibold border border-gray-300 text-gray-600 hover:bg-gray-50 cursor-pointer"
+                              >
+                                {isEs ? 'Cancelar' : 'Cancel'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveStaffNotes(selectedClient)}
+                                className="px-3 py-1 rounded-md text-[11px] font-bold bg-[#0F2747] hover:bg-[#16355C] text-white cursor-pointer shadow-xs"
+                              >
+                                {isEs ? 'Guardar Cambios' : 'Save Notes'}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-white p-3 rounded-lg border border-[#DCC9A7]/50 space-y-1">
+                            <span className="text-[10px] uppercase font-bold text-[#887D6B] block">
+                              {isEs ? 'Observaciones Registradas por el Solicitante:' : 'Applicant Case Remarks:'}
+                            </span>
+                            <p className="text-xs text-[#2E2E2E] leading-relaxed">
+                              {parsedNotes.customerNotes || (isEs ? 'Sin observaciones adicionales registradas por el cliente.' : 'No additional applicant remarks.')}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Resumen Oficial de Apostillado (Si aplica) */}
+                        {isApostille && (
+                          <div className="p-3.5 bg-gradient-to-br from-[#0F2747]/5 to-[#C9A96B]/10 rounded-xl border border-[#C9A96B]/50 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-[#0F2747] uppercase tracking-wider flex items-center gap-1.5">
+                                <Sparkles className="w-3.5 h-3.5 text-[#C9A96B]" />
+                                <span>{isEs ? 'Resumen Oficial de Apostillado & Costos' : 'Official Apostille Summary & Rates'}</span>
+                              </span>
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#0F2747] text-[#DCC9A7] font-semibold">
+                                {parsedNotes.apostilleDetails?.modalidad || (selectedClient.priority === 'urgente' ? 'Express 24h' : 'Trámite Regular')}
+                              </span>
+                            </div>
+
+                            {/* Tarifa y tiempos oficiales */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                              <div className="p-2 rounded-lg bg-white border border-[#DCC9A7]/50">
+                                <span className="text-[10px] text-[#887D6B] block font-medium">{isEs ? 'Modalidad' : 'Mode'}</span>
+                                <span className="font-bold text-[#0F2747] text-[11px] truncate block">
+                                  {parsedNotes.apostilleDetails?.modalidad || (selectedClient.priority === 'urgente' ? 'Express en 24h' : 'Regular 2-3 semanas')}
+                                </span>
+                              </div>
+                              <div className="p-2 rounded-lg bg-white border border-[#DCC9A7]/50">
+                                <span className="text-[10px] text-[#887D6B] block font-medium flex items-center gap-1">
+                                  <Clock className="w-3 h-3 text-[#C9A96B]" />
+                                  <span>{isEs ? 'Plazo' : 'Turnaround'}</span>
+                                </span>
+                                <span className="font-bold text-[#0F2747] text-[11px]">
+                                  {parsedNotes.apostilleDetails?.plazo || (selectedClient.priority === 'urgente' ? '24 horas' : '2 a 3 semanas')}
+                                </span>
+                              </div>
+                              <div className="p-2 rounded-lg bg-white border border-[#DCC9A7]/50">
+                                <span className="text-[10px] text-[#887D6B] block font-medium">{isEs ? 'Traducción' : 'Translation'}</span>
+                                <span className="font-semibold text-[#0F2747] text-[11px]">
+                                  {parsedNotes.apostilleDetails?.traduccion || 'No requerida'}
+                                </span>
+                              </div>
+                              <div className="p-2 rounded-lg bg-white border border-[#C9A96B] shadow-2xs">
+                                <span className="text-[10px] text-[#887D6B] block font-medium">{isEs ? 'Total Estimado' : 'Est. Total'}</span>
+                                <span className="font-bold font-serif text-[#0F2747] text-xs">
+                                  {parsedNotes.apostilleDetails?.totalEstimado || (selectedClient.priority === 'urgente' ? '$700 USD' : '$150 USD')}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* #Nota Indispensable: Documento Físico Original */}
+                            <div className="p-3 bg-amber-50/95 border border-amber-300 rounded-xl space-y-1.5 text-amber-950">
+                              <div className="flex items-start gap-2">
+                                <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                                <div>
+                                  <span className="font-bold text-[11px] text-amber-950 block leading-snug">
+                                    #Nota: Una fotografía o copia del documento no es suficiente para realizar el apostillado. Es necesario recibir el documento original antes de iniciar el trámite.
+                                  </span>
+                                  <p className="text-[10.5px] text-amber-900/90 leading-relaxed mt-1">
+                                    Para realizar cualquier trámite de apostillado, es indispensable contar con el documento original, ya que el proceso se realiza de manera presencial. El adjuntar una imagen o PDF del documento únicamente es para agilizar el trámite mientras llegan los documentos originales.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Specific parameters (Cleaned & Filtered) */}
+                        {parsedNotes.specificDetails && Object.keys(parsedNotes.specificDetails).length > 0 && (
+                          <div className="bg-white p-3 rounded-lg border border-[#DCC9A7]/50 space-y-2">
+                            <span className="text-[10px] uppercase font-bold text-[#0F2747] block tracking-wide">
+                              {isEs ? 'Detalles Específicos del Trámite:' : 'Specific Case Parameters:'}
+                            </span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                              {Object.entries(parsedNotes.specificDetails).map(([key, val]) => {
+                                const label = SPECIFIC_FIELD_LABELS[key]?.[language] || key;
+                                const formatted = formatSpecificValue(key, val, isEs);
+                                return (
+                                  <div key={key} className="p-2 rounded-md bg-[#F8F6F1]/80 border border-[#DCC9A7]/40 flex items-start justify-between gap-2">
+                                    <span className="text-[10.5px] text-[#887D6B] font-medium block">{label}:</span>
+                                    <span className="font-semibold text-[#0F2747] text-[11px] text-right">{formatted}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Canal oficial de documentación y correo */}
+                        <div className="p-3 bg-sky-50/90 border border-sky-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-sky-950">
+                          <div className="flex items-center gap-2">
+                            <Mail className="w-4 h-4 text-sky-700 shrink-0" />
+                            <div>
+                              <span className="font-bold block text-[11px]">
+                                {isEs ? 'Toda documentación canalizada al correo oficial:' : 'All documentation routed to official email:'}
+                              </span>
+                              <span className="font-mono text-sky-800 text-[10.5px]">
+                                {parsedNotes.emailSentTo || 'multiservicioslumielayi@gmail.com'}
+                              </span>
+                            </div>
+                          </div>
+                          <a
+                            href={`mailto:${parsedNotes.emailSentTo || 'multiservicioslumielayi@gmail.com'}?subject=Expediente%20${selectedClient.caseNumber}%20-%20${encodeURIComponent(selectedClient.firstName + ' ' + selectedClient.lastName)}`}
+                            className="inline-flex items-center justify-center gap-1 px-3 py-1.5 bg-[#0F2747] hover:bg-[#16355C] text-white rounded-lg text-[10.5px] font-semibold transition-colors cursor-pointer self-start sm:self-auto"
+                          >
+                            <span>{isEs ? 'Abrir Correo' : 'Compose'}</span>
+                            <ExternalLink className="w-3 h-3 text-[#C9A96B]" />
+                          </a>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Right Column: Quote & Payment Center + Activity Log */}
@@ -1400,14 +1790,120 @@ export const CrmDashboard: React.FC<CrmDashboardProps> = ({
 
             {/* Modal Footer */}
             <div className="bg-[#F8F6F1] px-6 py-3 border-t border-[#DCC9A7]/50 flex items-center justify-between">
-              <span className="text-xs text-[#887D6B] font-mono">
-                {isEs ? 'Responsable' : 'Assigned to'}: {selectedClient.assignedTo}
-              </span>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-700 hover:text-rose-900 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{isEs ? 'Eliminar Expediente' : 'Delete Case'}</span>
+                </button>
+                <span className="text-xs text-[#887D6B] font-mono hidden md:inline">
+                  {isEs ? 'Responsable' : 'Assigned to'}: {selectedClient.assignedTo}
+                </span>
+              </div>
               <button
-                onClick={() => setSelectedClient(null)}
-                className="px-5 py-2 bg-[#0F2747] text-white rounded-xl text-xs font-semibold hover:bg-[#16355C] transition-colors cursor-pointer"
+                onClick={() => {
+                  setSelectedClient(null);
+                  setShowDeleteConfirm(false);
+                  setIsEditingNotes(false);
+                }}
+                className="px-5 py-2 bg-[#0F2747] text-white rounded-xl text-xs font-semibold hover:bg-[#16355C] transition-colors cursor-pointer shadow-xs"
               >
                 {isEs ? 'Guardar y Cerrar' : 'Done / Close'}
+              </button>
+            </div>
+
+            {/* In-Modal Delete Confirmation Overlay */}
+            {showDeleteConfirm && (
+              <div className="absolute inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+                <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-rose-200 space-y-4">
+                  <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+                    <Trash2 className="w-6 h-6" />
+                  </div>
+                  <div className="text-center space-y-1">
+                    <h4 className="font-serif font-bold text-lg text-[#0F2747]">
+                      {isEs ? '¿Eliminar este Expediente?' : 'Delete this Case File?'}
+                    </h4>
+                    <p className="text-xs text-[#887D6B] leading-relaxed">
+                      {isEs 
+                        ? `Se eliminará permanentemente el expediente ${selectedClient.caseNumber} a nombre de ${selectedClient.firstName} ${selectedClient.lastName}, incluyendo sus documentos asociados y bitácora.`
+                        : `Case ${selectedClient.caseNumber} for ${selectedClient.firstName} ${selectedClient.lastName} will be permanently removed along with its documents and logs.`
+                      }
+                    </p>
+                    <p className="text-[11px] font-semibold text-rose-600 pt-1">
+                      {isEs ? 'Esta acción es irreversible y permanente.' : 'This action is irreversible and permanent.'}
+                    </p>
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="flex-1 py-2 px-3 rounded-xl border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                    >
+                      {isEs ? 'Cancelar' : 'Cancel'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onDeleteClient?.(selectedClient.id);
+                        setSelectedClient(null);
+                        setShowDeleteConfirm(false);
+                      }}
+                      className="flex-1 py-2 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors cursor-pointer shadow-xs"
+                    >
+                      {isEs ? 'Sí, Eliminar Definitivamente' : 'Yes, Delete Case'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal for Table Quick Actions */}
+      {clientToDelete && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150 print:hidden">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-rose-200 space-y-4">
+            <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <div className="text-center space-y-1">
+              <h4 className="font-serif font-bold text-lg text-[#0F2747]">
+                {isEs ? '¿Eliminar este Expediente?' : 'Delete this Case File?'}
+              </h4>
+              <p className="text-xs text-[#887D6B] leading-relaxed">
+                {isEs 
+                  ? `Se eliminará permanentemente el expediente ${clientToDelete.caseNumber} de ${clientToDelete.firstName} ${clientToDelete.lastName}.`
+                  : `Case ${clientToDelete.caseNumber} for ${clientToDelete.firstName} ${clientToDelete.lastName} will be permanently removed.`
+                }
+              </p>
+              <p className="text-[11px] font-semibold text-rose-600 pt-1">
+                {isEs ? 'Esta acción es irreversible y permanente.' : 'This action is irreversible and permanent.'}
+              </p>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setClientToDelete(null)}
+                className="flex-1 py-2 px-3 rounded-xl border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+              >
+                {isEs ? 'Cancelar' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onDeleteClient?.(clientToDelete.id);
+                  if (selectedClient?.id === clientToDelete.id) {
+                    setSelectedClient(null);
+                  }
+                  setClientToDelete(null);
+                }}
+                className="flex-1 py-2 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors cursor-pointer shadow-xs"
+              >
+                {isEs ? 'Sí, Eliminar' : 'Yes, Delete'}
               </button>
             </div>
           </div>

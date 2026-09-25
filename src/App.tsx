@@ -74,6 +74,7 @@ export default function App() {
   }, [users]);
   const [isIntakeModalOpen, setIsIntakeModalOpen] = useState(false);
   const [selectedDivision, setSelectedDivision] = useState<ServiceDivisionId>('apostille');
+  const [intakeKey, setIntakeKey] = useState(0);
 
   // Modals for Legal and Staff Authentication
   const [activeLegalDoc, setActiveLegalDoc] = useState<LegalDocType | null>(null);
@@ -84,6 +85,7 @@ export default function App() {
     if (divisionId) {
       setSelectedDivision(divisionId);
     }
+    setIntakeKey((prev) => prev + 1);
     setIsIntakeModalOpen(true);
   };
 
@@ -100,6 +102,11 @@ export default function App() {
   // Staff manually creates a client record in CRM
   const handleCreateClient = (newClient: ClientRecord) => {
     setClients((prev) => [newClient, ...prev]);
+  };
+
+  // Staff deletes a client record in CRM
+  const handleDeleteClient = (clientId: string) => {
+    setClients((prev) => prev.filter((c) => c.id !== clientId));
   };
 
   // Staff updates users list
@@ -212,6 +219,7 @@ export default function App() {
               clients={clients}
               onUpdateClient={handleUpdateClient}
               onCreateClient={handleCreateClient}
+              onDeleteClient={handleDeleteClient}
               users={users}
               onUpdateUsers={handleUpdateUsers}
               onExitToPortal={() => {
@@ -250,6 +258,7 @@ export default function App() {
 
       {/* Universal Request & Dynamic Intake Modal */}
       <UniversalIntakeModal
+        key={`universal-intake-${intakeKey}`}
         isOpen={isIntakeModalOpen}
         onClose={() => setIsIntakeModalOpen(false)}
         language={language}

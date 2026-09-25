@@ -1014,10 +1014,10 @@ export const COMPANY_INFO = {
   address: '550 Greens Pkwy Ste 212B',
   cityStateZip: 'Houston, TX 77067',
   fullAddress: '550 Greens Pkwy Ste 212B, Houston, TX 77067, USA',
-  phone: '+1 (346) 521-0662',
-  phoneRaw: '13465210662',
+  phone: '+1 (409) 800-3993',
+  phoneRaw: '14098003993',
   email: 'multiservicioslumielayi@gmail.com',
-  whatsappUrl: 'https://wa.me/13465210662?text=Hola%20Multiservicios%20Lumiel,%20deseo%20consultar%20sobre%20un%20trámite.',
+  whatsappUrl: 'https://wa.me/14098003993?text=Hola%20Multiservicios%20Lumiel,%20deseo%20consultar%20sobre%20un%20trámite.',
   hours: {
     es: 'Lunes a Viernes: 9:00 AM – 6:00 PM | Sábados: 10:00 AM – 2:00 PM',
     en: 'Monday to Friday: 9:00 AM – 6:00 PM | Saturday: 10:00 AM – 2:00 PM',

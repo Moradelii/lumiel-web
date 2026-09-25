@@ -265,7 +265,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
 
             <h4 className="font-serif font-bold text-sm text-[#0F2747]">3. Asistencia Personalizada</h4>
             <p>
-              Si requiere asistencia adaptada o tiene alguna dificultad para acceder a algún trámite, contáctenos directamente al <a href="tel:+13465210662" className="text-[#0F2747] font-bold underline">+1 (346) 521-0662</a> o vía correo electrónico a <span className="font-mono text-[#0F2747]">multiservicioslumielayi@gmail.com</span>.
+              Si requiere asistencia adaptada o tiene alguna dificultad para acceder a algún trámite, contáctenos directamente al <a href="tel:+14098003993" className="text-[#0F2747] font-bold underline">+1 (409) 800-3993</a> o vía correo electrónico a <span className="font-mono text-[#0F2747]">multiservicioslumielayi@gmail.com</span>.
             </p>
           </div>
         ),
@@ -287,7 +287,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
 
             <h4 className="font-serif font-bold text-sm text-[#0F2747]">3. Direct Assistance</h4>
             <p>
-              If you experience any accessibility barrier, reach us directly at +1 (346) 521-0662 or multiservicioslumielayi@gmail.com for immediate personal assistance.
+              If you experience any accessibility barrier, reach us directly at +1 (409) 800-3993 or multiservicioslumielayi@gmail.com for immediate personal assistance.
             </p>
           </div>
         ),

@@ -156,7 +156,7 @@ export const SmartServiceSelector: React.FC<SmartServiceSelectorProps> = ({
                 href={`tel:${COMPANY_INFO.phoneRaw}`}
                 className="w-full py-2 bg-[#DCC9A7] hover:bg-[#cbb692] text-[#0F2747] rounded-lg font-bold text-xs flex items-center justify-center gap-2 transition-colors"
               >
-                <span>📞 +1 (346) 521-0662</span>
+                <span>📞 {COMPANY_INFO.phone}</span>
               </a>
               <a
                 href={COMPANY_INFO.whatsappUrl}

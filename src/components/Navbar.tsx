@@ -311,7 +311,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="w-full py-2.5 bg-[#8A9A7B]/15 text-[#0F2747] text-xs font-bold rounded-xl text-center border border-[#8A9A7B]/40 flex items-center justify-center gap-2"
               >
                 <MessageCircle className="w-4 h-4 text-[#8A9A7B]" />
-                <span>WhatsApp Houston (+1 346 521-0662)</span>
+                <span>WhatsApp Houston ({COMPANY_INFO.phone})</span>
               </a>
             </div>
           </div>
