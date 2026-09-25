@@ -54,7 +54,7 @@ export const ServiceCatalog: React.FC<ServiceCatalogProps> = ({
         </div>
 
         {/* Division Tabs Bar */}
-        <div className="flex items-center justify-start lg:justify-center overflow-x-auto gap-2 pb-2 scrollbar-none">
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-2.5">
           {SERVICE_DIVISIONS.map((div) => {
             const isActive = activeTab === div.id;
             return (
@@ -64,13 +64,15 @@ export const ServiceCatalog: React.FC<ServiceCatalogProps> = ({
                   setActiveTab(div.id);
                   setExpandedServiceId(null);
                 }}
-                className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all flex items-center gap-2 border cursor-pointer ${
+                className={`px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 border cursor-pointer ${
                   isActive
-                    ? 'bg-[#0F2747] text-white border-[#0F2747] shadow-md'
-                    : 'bg-[#F8F6F1] text-[#2E2E2E] border-[#DCC9A7]/60 hover:bg-[#EAE3D8]'
+                    ? 'bg-[#0F2747] text-white border-[#0F2747] shadow-md scale-[1.02]'
+                    : 'bg-[#F8F6F1] text-[#2E2E2E] border-[#DCC9A7]/60 hover:bg-[#EAE3D8] hover:border-[#C9A96B]/50'
                 }`}
               >
-                <span className={`text-[10px] font-mono ${isActive ? 'text-[#C9A96B]' : 'text-[#887D6B]'}`}>
+                <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md transition-colors ${
+                  isActive ? 'bg-[#C9A96B] text-[#0F2747]' : 'bg-[#EAE3D8] text-[#887D6B]'
+                }`}>
                   {div.code}
                 </span>
                 <span>{div.title[language]}</span>
