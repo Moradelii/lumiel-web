@@ -1076,7 +1076,7 @@ export const UniversalIntakeModal: React.FC<UniversalIntakeModalProps> = ({
                   <AlertCircle className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
                   <div className="space-y-1.5 text-xs">
                     <h5 className="font-bold text-amber-900 leading-snug">
-                      #Nota: Una fotografía o copia del documento no es suficiente para realizar el apostillado. Es necesario recibir el documento original antes de iniciar el trámite.
+                      Nota: Una fotografía o copia del documento no es suficiente para realizar el apostillado. Es necesario recibir el documento original antes de iniciar el trámite.
                     </h5>
                     <p className="text-amber-950/90 leading-relaxed">
                       Para realizar cualquier trámite de apostillado, es indispensable contar con el documento original, ya que el proceso se realiza de manera presencial.
