@@ -54,6 +54,16 @@ if not exist .git (
     echo -> El repositorio Git local ya estaba inicializado.
 )
 
+REM Limpieza preventiva: bun.lock causa fallos en Cloudflare Pages
+if exist "bun.lock" (
+    echo -> Eliminando bun.lock local para permitir el despliegue con npm...
+    del /f /q bun.lock 2>nul
+)
+if exist "bun.lockb" (
+    del /f /q bun.lockb 2>nul
+)
+git rm --cached bun.lock* 2>nul
+
 echo.
 echo [2/6] Agregando todos los archivos del proyecto al area de preparacion...
 git add -A
@@ -61,7 +71,7 @@ echo -> Archivos preparados para el commit.
 
 echo.
 echo [3/6] Creando el punto de control (Commit)...
-set "COMMIT_MSG=Fifth commit: lumiel-web"
+set "COMMIT_MSG=Fix: eliminar bun.lock incompatible para resolver despliegue"
 echo Mensaje de commit predeterminado: "%COMMIT_MSG%"
 echo Presiona ENTER para usarlo o escribe uno nuevo:
 set /p USER_MSG="Mensaje (opcional): "
