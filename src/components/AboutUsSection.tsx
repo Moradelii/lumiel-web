@@ -14,9 +14,9 @@ import {
   HeartHandshake
 } from 'lucide-react';
 
-// Imported generated images
-import officeImg from '../assets/images/about_lumiel_office_1790225820016.jpg';
-import teamImg from '../assets/images/about_lumiel_team_1790225831629.jpg';
+// Direct paths from public/images
+const officeImg = '/images/about_1.png';
+const teamImg = '/images/about_2.png';
 
 interface AboutUsSectionProps {
   language: Language;

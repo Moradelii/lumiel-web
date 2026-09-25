@@ -5,7 +5,7 @@ export const INITIAL_CRM_USERS: CrmUser[] = [
     id: 'user-001',
     username: 'admin',
     password: 'Antunez0105',
-    fullName: 'Alaniss Antúnez',
+    fullName: 'María Elena Salazar',
     email: 'multiservicioslumielayi@gmail.com',
     role: 'super_admin',
     status: 'active',
